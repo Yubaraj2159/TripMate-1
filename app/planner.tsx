@@ -74,7 +74,7 @@ export default function Planner(): JSX.Element {
           text: "View Trips",
           onPress: () => {
             // ensure the route exists in your app: maybe "/Trips" or "/trips"
-            router.push("/Trips");
+            router.push("/trips");
           },
         },
       ]);
