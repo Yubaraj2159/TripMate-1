@@ -12,14 +12,10 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  MapPin,
-  UserPlus,
-  PlaneTakeoff,
-  Image as ImageIcon,
-} from "lucide-react-native";
+import { Picker } from "@react-native-picker/picker";
+import { MapPin, UserPlus, PlaneTakeoff, Image as ImageIcon } from "lucide-react-native";
 
-const UNSPLASH_ACCESS_KEY = "your_unsplash_key_here"; // <-- replace
+const UNSPLASH_ACCESS_KEY = "your_unsplash_key_here";
 
 type Trip = {
   name: string;
@@ -40,6 +36,7 @@ export default function Planner(): JSX.Element {
     friends: "",
     type: "",
   });
+
   const [imageUrl, setImageUrl] = useState<string>("");
   const fetchTimeout = useRef<number | null>(null);
   const isMounted = useRef(true);
@@ -47,9 +44,7 @@ export default function Planner(): JSX.Element {
   useEffect(() => {
     return () => {
       isMounted.current = false;
-      if (fetchTimeout.current) {
-        clearTimeout(fetchTimeout.current);
-      }
+      if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
     };
   }, []);
 
@@ -70,21 +65,15 @@ export default function Planner(): JSX.Element {
       await AsyncStorage.setItem("plannedTrips", JSON.stringify(existing));
 
       Alert.alert("Success", "🎉 Trip successfully created!", [
-        {
-          text: "View Trips",
-          onPress: () => {
-            // ensure the route exists in your app: maybe "/Trips" or "/trips"
-            router.push("/trips");
-          },
-        },
+        { text: "View Trips", onPress: () => router.push("/trips") },
       ]);
     } catch (err) {
-      console.error("AsyncStorage error:", err);
-      Alert.alert("Error", "Could not save trip. Try again.");
+      console.error("Error:", err);
+      Alert.alert("Error", "Could not save trip.");
     }
   };
 
-  // Debounced Unsplash search
+  // Unsplash Image Fetch
   useEffect(() => {
     if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
 
@@ -104,63 +93,62 @@ export default function Planner(): JSX.Element {
 
         if (!isMounted.current) return;
 
-        if (data && Array.isArray(data.results) && data.results.length > 0) {
+        if (data.results?.length > 0) {
           setImageUrl(data.results[0].urls.regular);
         } else {
           setImageUrl("");
         }
       } catch (e) {
-        console.warn("Image fetch failed:", e);
         if (isMounted.current) setImageUrl("");
       }
     }, 500);
-
-    // cleanup handled by outer effect/unmount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trip.destination]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Header */}
       <View style={styles.headerRow}>
-        <PlaneTakeoff color="#2563eb" size={28} />
-        <Text style={styles.title}>Plan Your Trip</Text>
+        <PlaneTakeoff color="white" size={28} />
+        <Text style={styles.headerTitle}>Plan Your Trip</Text>
       </View>
 
-      <Input label="Trip Name" value={trip.name} onChange={(t) => updateField("name", t)} />
+      <Input label="Trip Name" value={trip.name} onChange={(v) => updateField("name", v)} />
 
-      <SelectTripType value={trip.type} onChange={(v) => updateField("type", v)} />
+      <TripTypePicker value={trip.type} onChange={(v) => updateField("type", v)} />
 
       <Input
         label="Destination"
-        icon={<MapPin color="#555" size={18} />}
+        icon={<MapPin color="#2563eb" size={18} />}
         value={trip.destination}
-        onChange={(t) => updateField("destination", t)}
+        onChange={(v) => updateField("destination", v)}
       />
 
       <Input
         label="Start Date (YYYY-MM-DD)"
         value={trip.startDate}
-        onChange={(t) => updateField("startDate", t)}
+        onChange={(v) => updateField("startDate", v)}
         placeholder="2025-12-20"
       />
+
       <Input
         label="End Date (YYYY-MM-DD)"
         value={trip.endDate}
-        onChange={(t) => updateField("endDate", t)}
+        onChange={(v) => updateField("endDate", v)}
         placeholder="2025-12-25"
       />
 
       <Input
         label="Invite Friends (Optional)"
-        icon={<UserPlus color="#555" size={18} />}
+        icon={<UserPlus color="#2563eb" size={18} />}
         value={trip.friends}
-        onChange={(t) => updateField("friends", t)}
+        onChange={(v) => updateField("friends", v)}
       />
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>Create Trip ✨</Text>
       </TouchableOpacity>
 
+      {/* Preview Box */}
       <View style={styles.previewCard}>
         <Text style={styles.previewTitle}>Trip Preview</Text>
         <Preview label="Type" value={trip.type} />
@@ -170,7 +158,7 @@ export default function Planner(): JSX.Element {
 
         <View style={styles.imageBox}>
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+            <Image source={{ uri: imageUrl }} style={styles.image} />
           ) : (
             <View style={styles.imageFallback}>
               <ImageIcon color="#999" size={28} />
@@ -183,7 +171,41 @@ export default function Planner(): JSX.Element {
   );
 }
 
-/* ---------- Small components ---------- */
+/* ---------- Trip Type Dropdown (Picker) ---------- */
+
+function TripTypePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={styles.label}>Trip Type</Text>
+
+      <View style={styles.pickerWrapper}>
+        <Picker selectedValue={value} onValueChange={onChange} style={styles.picker}>
+          <Picker.Item label="Select a trip type..." value="" />
+          <Picker.Item label="Road Trip" value="Road Trip" />
+          <Picker.Item label="Beach Vacation" value="Beach Vacation" />
+          <Picker.Item label="City Escape" value="City Escape" />
+          <Picker.Item label="Hiking Adventure" value="Hiking Adventure" />
+          <Picker.Item
+            label="International – Southeast Asia"
+            value="International – Southeast Asia"
+          />
+          <Picker.Item
+            label="International – Europe"
+            value="International – Europe"
+          />
+        </Picker>
+      </View>
+    </View>
+  );
+}
+
+/* ---------- UI Components ---------- */
 
 function Input({
   label,
@@ -201,13 +223,14 @@ function Input({
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={styles.label}>{label}</Text>
+
       <View style={styles.inputRow}>
         {icon && <View style={{ marginRight: 8 }}>{icon}</View>}
         <TextInput
           style={styles.textInput}
           value={value}
           onChangeText={onChange}
-          placeholder={placeholder ?? label}
+          placeholder={placeholder || label}
           placeholderTextColor="#888"
         />
       </View>
@@ -215,43 +238,9 @@ function Input({
   );
 }
 
-function SelectTripType({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const types = [
-    "Road Trip",
-    "Beach Vacation",
-    "City Escape",
-    "Hiking Adventure",
-    "International – Southeast Asia",
-    "International – Europe",
-  ];
-
+function Preview({ label, value }) {
   return (
-    <View style={{ marginBottom: 16 }}>
-      <Text style={styles.label}>Trip Type</Text>
-      <View>
-        {types.map((t) => {
-          const selected = t === value;
-          return (
-            <TouchableOpacity
-              key={t}
-              onPress={() => onChange(t)}
-              style={[
-                styles.typeBtn,
-                selected ? { backgroundColor: "#bfdbfe", borderColor: "#93c5fd" } : null,
-              ]}
-            >
-              <Text>{t}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function Preview({ label, value }: { label: string; value: string }) {
-  return (
-    <Text style={{ fontSize: 14, marginBottom: 6 }}>
+    <Text style={styles.previewText}>
       <Text style={{ fontWeight: "600" }}>{label}: </Text>
       {value || "—"}
     </Text>
@@ -259,57 +248,93 @@ function Preview({ label, value }: { label: string; value: string }) {
 }
 
 /* ---------- Styles ---------- */
+
 const styles = StyleSheet.create({
   container: {
     padding: 20,
     backgroundColor: "#eef6ff",
     flexGrow: 1,
   },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
-  title: { fontSize: 26, fontWeight: "700", color: "#2563eb", marginLeft: 8 },
-  label: { fontSize: 14, fontWeight: "500", marginBottom: 6 },
+
+  /* Header */
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#2563eb",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 18,
+  },
+  headerTitle: { color: "white", fontSize: 22, fontWeight: "700", marginLeft: 10 },
+
+  label: { fontSize: 14, fontWeight: "600", marginBottom: 6, color: "#1e293b" },
+
+  /* Picker Styling */
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: "#3b82f6",
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "white",
+  },
+  picker: {
+    height: 50,
+    width: "100%",
+    color: "#1e293b",
+  },
+
+  /* Inputs */
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    borderColor: "#94a3b8",
+    borderRadius: 10,
+    paddingHorizontal: 12,
     backgroundColor: "white",
   },
-  textInput: { flex: 1, paddingVertical: 10, fontSize: 15 },
+  textInput: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: "#0f172a",
+  },
+
+  /* Button */
   button: {
     backgroundColor: "#2563eb",
     padding: 14,
-    borderRadius: 10,
-    marginTop: 12,
-  },
-  buttonText: { color: "white", textAlign: "center", fontSize: 17, fontWeight: "600" },
-  previewCard: {
-    marginTop: 22,
-    backgroundColor: "white",
-    padding: 14,
-    borderRadius: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-  },
-  previewTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8, color: "#0f172a" },
-  imageBox: {
-    height: 150,
+    borderRadius: 12,
     marginTop: 10,
-    borderRadius: 8,
+  },
+  buttonText: {
+    color: "white",
+    textAlign: "center",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+
+  /* Preview Card */
+  previewCard: {
+    marginTop: 24,
+    backgroundColor: "white",
+    padding: 16,
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  previewTitle: { fontSize: 18, fontWeight: "700", marginBottom: 10, color: "#0f172a" },
+  previewText: { fontSize: 15, marginBottom: 6, color: "#334155" },
+
+  imageBox: {
+    height: 160,
+    marginTop: 10,
+    borderRadius: 10,
     overflow: "hidden",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#f1f5f9",
   },
   image: { width: "100%", height: "100%" },
   imageFallback: { flex: 1, justifyContent: "center", alignItems: "center" },
-  typeBtn: {
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "white",
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
 });
