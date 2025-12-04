@@ -123,4 +123,4 @@ const styles = StyleSheet.create({
   buttonText: { color: "white", fontSize: 17, fontWeight: "600", textAlign: "center" },
 
   signUpText: { color: "#334155", textAlign: "center", fontSize: 15 },
-})
+});
