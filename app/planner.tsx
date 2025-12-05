@@ -1,4 +1,4 @@
-// app/planner.tsx
+
 import React, { useEffect, useRef, useState } from "react";
 import {
   View,
@@ -337,4 +337,4 @@ const styles = StyleSheet.create({
   },
   image: { width: "100%", height: "100%" },
   imageFallback: { flex: 1, justifyContent: "center", alignItems: "center" },
-})
+});
