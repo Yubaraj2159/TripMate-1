@@ -246,7 +246,7 @@ function Preview({ label, value }) {
   );
 }
 
-/* ---------- Styles ---------- */
+/* ---------- Styles ----------This is the styles */
 
 const styles = StyleSheet.create({
   container: {
