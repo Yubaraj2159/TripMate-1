@@ -1,126 +1,57 @@
 // app/login.tsx
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  StyleSheet,
-  ScrollView,
-} from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import { User, Lock } from "lucide-react-native";
+import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import { loginUser } from "../services/authService";
+import { router } from "expo-router";
 
 export default function Login() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Missing info", "Please enter both email and password.");
-      return;
-    }
-
     try {
-      const usersRaw = await AsyncStorage.getItem("users");
-      const users = usersRaw ? JSON.parse(usersRaw) : [];
-
-      const user = users.find((u: any) => u.email === email && u.password === password);
-
-      if (user) {
-        await AsyncStorage.setItem("loggedInUser", JSON.stringify(user));
-        Alert.alert("Success", `Welcome back, ${user.name}!`, [
-          { text: "Go to Planner", onPress: () => router.push("/planner") },
-        ]);
-      } else {
-        Alert.alert("Error", "Invalid email or password.");
-      }
-    } catch (err) {
-      console.error(err);
-      Alert.alert("Error", "Something went wrong. Try again.");
+      await loginUser(email.trim(), password);
+      router.replace("/");  // redirect to home
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>TripMate Login</Text>
-      <Text style={styles.subtitle}>Plan and manage your trips easily ✨</Text>
+    <View style={{ padding: 20, marginTop: 100 }}>
+      <Text style={{ fontSize: 24, marginBottom: 20 }}>Login</Text>
 
-      <View style={styles.inputWrapper}>
-        <User color="#2563eb" size={20} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
+      <TextInput
+        placeholder="Email"
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
+      />
 
-      <View style={styles.inputWrapper}>
-        <Lock color="#2563eb" size={20} />
-        <TextInput
-          style={styles.textInput}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-      </View>
+      <TextInput
+        placeholder="Password"
+        secureTextEntry
+        onChangeText={setPassword}
+        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
+      />
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Login</Text>
+      <TouchableOpacity
+        style={{
+          backgroundColor: "blue",
+          padding: 14,
+          borderRadius: 8,
+          marginTop: 10,
+        }}
+        onPress={handleLogin}
+      >
+        <Text style={{ color: "white", textAlign: "center" }}>Login</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push("/signup")}>
-        <Text style={styles.signUpText}>
-          Don't have an account? <Text style={{ color: "#2563eb" }}>Sign Up</Text>
+        <Text style={{ marginTop: 20, color: "blue" }}>
+          Don't have an account? Sign up
         </Text>
       </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 }
-
-/* ---------- Styles ---------- */
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: "#eef6ff",
-    padding: 20,
-    justifyContent: "center",
-  },
-  title: { fontSize: 28, fontWeight: "700", color: "#2563eb", marginBottom: 6 },
-  subtitle: { fontSize: 16, color: "#334155", marginBottom: 24 },
-
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#94a3b8",
-    borderRadius: 10,
-    backgroundColor: "white",
-    paddingHorizontal: 12,
-    marginBottom: 16,
-  },
-  textInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: "#0f172a",
-    marginLeft: 8,
-  },
-
-  button: {
-    backgroundColor: "#2563eb",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  buttonText: { color: "white", fontSize: 17, fontWeight: "600", textAlign: "center" },
-
-  signUpText: { color: "#334155", textAlign: "center", fontSize: 15 },
-});
