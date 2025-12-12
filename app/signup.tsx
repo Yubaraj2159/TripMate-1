@@ -1,12 +1,23 @@
 // app/signup.tsx
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { registerUser } from "../services/authService";
 import { router } from "expo-router";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSignup = async () => {
     try {
@@ -18,40 +29,122 @@ export default function Signup() {
   };
 
   return (
-    <View style={{ padding: 20, marginTop: 100 }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Sign Up</Text>
-
-      <TextInput
-        placeholder="Email"
-        autoCapitalize="none"
-        onChangeText={setEmail}
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
-      />
-
-      <TextInput
-        placeholder="Password"
-        secureTextEntry
-        onChangeText={setPassword}
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
-      />
-
-      <TouchableOpacity
-        style={{
-          backgroundColor: "green",
-          padding: 14,
-          borderRadius: 8,
-          marginTop: 10,
-        }}
-        onPress={handleSignup}
+    <LinearGradient colors={["#8F94FB", "#4E54C8"]} style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.inner}
       >
-        <Text style={{ color: "white", textAlign: "center" }}>Create Account</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.push("/login")}>
-        <Text style={{ marginTop: 20, color: "blue" }}>
-          Already have an account? Login
+        <Text style={styles.title}>Create Account</Text>
+        <Text style={styles.subtitle}>
+          Sign up to start planning amazing trips
         </Text>
-      </TouchableOpacity>
-    </View>
+
+        {/* Email Field */}
+        <View style={styles.inputContainer}>
+          <Mail size={20} color="#555" />
+          <TextInput
+            placeholder="Email"
+            placeholderTextColor="#777"
+            autoCapitalize="none"
+            onChangeText={setEmail}
+            style={styles.input}
+          />
+        </View>
+
+        {/* Password Field */}
+        <View style={styles.inputContainer}>
+          <Lock size={20} color="#555" />
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor="#777"
+            secureTextEntry={!showPassword}
+            onChangeText={setPassword}
+            style={[styles.input, { marginRight: 40 }]}
+          />
+
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? (
+              <EyeOff size={20} color="#555" />
+            ) : (
+              <Eye size={20} color="#555" />
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Create Account Button */}
+        <TouchableOpacity style={styles.button} onPress={handleSignup}>
+          <Text style={styles.buttonText}>Sign Up</Text>
+        </TouchableOpacity>
+
+        {/* Login Redirect */}
+        <TouchableOpacity onPress={() => router.push("/login")}>
+          <Text style={styles.link}>Already have an account? Login</Text>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  inner: {
+    padding: 25,
+    marginTop: 80,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "white",
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#EAEAEA",
+    marginBottom: 40,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 15,
+    elevation: 3,
+    position: "relative",
+  },
+  input: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 16,
+    color: "#333",
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 12,
+  },
+  button: {
+    backgroundColor: "#3F51B5",
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 10,
+    elevation: 4,
+  },
+  buttonText: {
+    color: "white",
+    textAlign: "center",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  link: {
+    marginTop: 25,
+    color: "white",
+    fontSize: 15,
+    textAlign: "center",
+  },
+});
