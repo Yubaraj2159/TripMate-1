@@ -12,11 +12,12 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { loginUser } from "../services/authService";
 import { router } from "expo-router";
-import { Mail, Lock } from "lucide-react-native";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     try {
@@ -28,18 +29,13 @@ export default function Login() {
   };
 
   return (
-    <LinearGradient
-      colors={["#4E54C8", "#8F94FB"]}
-      style={styles.container}
-    >
+    <LinearGradient colors={["#4E54C8", "#8F94FB"]} style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.inner}
       >
         <Text style={styles.title}>Welcome Back!</Text>
-        <Text style={styles.subtitle}>
-          Login to continue planning your trips
-        </Text>
+        <Text style={styles.subtitle}>Login to continue planning your trips</Text>
 
         {/* Email Field */}
         <View style={styles.inputContainer}>
@@ -59,10 +55,21 @@ export default function Login() {
           <TextInput
             placeholder="Password"
             placeholderTextColor="#777"
-            secureTextEntry
+            secureTextEntry={!showPassword}
             onChangeText={setPassword}
-            style={styles.input}
+            style={[styles.input, { marginRight: 40 }]} // space for eye icon
           />
+
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? (
+              <EyeOff size={20} color="#555" />
+            ) : (
+              <Eye size={20} color="#555" />
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Login Button */}
@@ -70,13 +77,10 @@ export default function Login() {
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
 
-        {/* Signup Redirect */}
+        {/* Signup Link */}
         <TouchableOpacity onPress={() => router.push("/signup")}>
-          <Text style={styles.link}>
-            Don't have an account? Sign up
-          </Text>
+          <Text style={styles.link}>Don't have an account? Sign up</Text>
         </TouchableOpacity>
-
       </KeyboardAvoidingView>
     </LinearGradient>
   );
@@ -110,12 +114,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 15,
     elevation: 3,
+    position: "relative",
   },
   input: {
     flex: 1,
     marginLeft: 10,
     fontSize: 16,
     color: "#333",
+  },
+  eyeIcon: {
+    position: "absolute",
+    right: 12,
   },
   button: {
     backgroundColor: "#3F51B5",
