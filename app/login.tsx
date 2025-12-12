@@ -1,8 +1,18 @@
 // app/login.tsx
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { loginUser } from "../services/authService";
 import { router } from "expo-router";
+import { Mail, Lock } from "lucide-react-native";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -11,47 +21,119 @@ export default function Login() {
   const handleLogin = async () => {
     try {
       await loginUser(email.trim(), password);
-      router.replace("/");  // redirect to home
+      router.replace("/");
     } catch (err: any) {
       alert(err.message);
     }
   };
 
   return (
-    <View style={{ padding: 20, marginTop: 100 }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>Login</Text>
-
-      <TextInput
-        placeholder="Email"
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
-      />
-
-      <TextInput
-        placeholder="Password"
-        secureTextEntry
-        onChangeText={setPassword}
-        style={{ borderWidth: 1, marginBottom: 10, padding: 10 }}
-      />
-
-      <TouchableOpacity
-        style={{
-          backgroundColor: "blue",
-          padding: 14,
-          borderRadius: 8,
-          marginTop: 10,
-        }}
-        onPress={handleLogin}
+    <LinearGradient
+      colors={["#4E54C8", "#8F94FB"]}
+      style={styles.container}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.inner}
       >
-        <Text style={{ color: "white", textAlign: "center" }}>Login</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => router.push("/signup")}>
-        <Text style={{ marginTop: 20, color: "blue" }}>
-          Don't have an account? Sign up
+        <Text style={styles.title}>Welcome Back!</Text>
+        <Text style={styles.subtitle}>
+          Login to continue planning your trips
         </Text>
-      </TouchableOpacity>
-    </View>
+
+        {/* Email Field */}
+        <View style={styles.inputContainer}>
+          <Mail size={20} color="#555" />
+          <TextInput
+            placeholder="Email"
+            placeholderTextColor="#777"
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            style={styles.input}
+          />
+        </View>
+
+        {/* Password Field */}
+        <View style={styles.inputContainer}>
+          <Lock size={20} color="#555" />
+          <TextInput
+            placeholder="Password"
+            placeholderTextColor="#777"
+            secureTextEntry
+            onChangeText={setPassword}
+            style={styles.input}
+          />
+        </View>
+
+        {/* Login Button */}
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
+
+        {/* Signup Redirect */}
+        <TouchableOpacity onPress={() => router.push("/signup")}>
+          <Text style={styles.link}>
+            Don't have an account? Sign up
+          </Text>
+        </TouchableOpacity>
+
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  inner: {
+    padding: 25,
+    marginTop: 80,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "white",
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#EAEAEA",
+    marginBottom: 40,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 15,
+    elevation: 3,
+  },
+  input: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 16,
+    color: "#333",
+  },
+  button: {
+    backgroundColor: "#3F51B5",
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 10,
+    elevation: 4,
+  },
+  buttonText: {
+    color: "white",
+    textAlign: "center",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  link: {
+    marginTop: 25,
+    color: "white",
+    fontSize: 15,
+    textAlign: "center",
+  },
+});
