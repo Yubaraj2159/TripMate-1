@@ -12,16 +12,26 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { registerUser } from "../services/authService";
 import { router } from "expo-router";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
+import { Mail, Lock, Eye, EyeOff, User } from "lucide-react-native";
 
 export default function Signup() {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSignup = async () => {
+    if (!fullName || !email || !password) {
+      alert("Please fill in all fields");
+      return;
+    }
+
     try {
-      await registerUser(email.trim(), password);
+      await registerUser(
+        fullName.trim(),
+        email.trim(),
+        password
+      );
       router.replace("/");
     } catch (err: any) {
       alert(err.message);
@@ -39,6 +49,17 @@ export default function Signup() {
           Sign up to start planning amazing trips
         </Text>
 
+        {/* Full Name Field */}
+        <View style={styles.inputContainer}>
+          <User size={20} color="#555" />
+          <TextInput
+            placeholder="Full Name"
+            placeholderTextColor="#777"
+            onChangeText={setFullName}
+            style={styles.input}
+          />
+        </View>
+
         {/* Email Field */}
         <View style={styles.inputContainer}>
           <Mail size={20} color="#555" />
@@ -46,6 +67,7 @@ export default function Signup() {
             placeholder="Email"
             placeholderTextColor="#777"
             autoCapitalize="none"
+            keyboardType="email-address"
             onChangeText={setEmail}
             style={styles.input}
           />
@@ -61,7 +83,6 @@ export default function Signup() {
             onChangeText={setPassword}
             style={[styles.input, { marginRight: 40 }]}
           />
-
           <TouchableOpacity
             style={styles.eyeIcon}
             onPress={() => setShowPassword(!showPassword)}
@@ -89,13 +110,8 @@ export default function Signup() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  inner: {
-    padding: 25,
-    marginTop: 80,
-  },
+  container: { flex: 1 },
+  inner: { padding: 25, marginTop: 80 },
   title: {
     fontSize: 32,
     fontWeight: "700",
