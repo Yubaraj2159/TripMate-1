@@ -1,4 +1,3 @@
-// app/signup.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -8,6 +7,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { registerUser } from "../services/authService";
@@ -22,7 +22,7 @@ export default function Signup() {
 
   const handleSignup = async () => {
     if (!fullName || !email || !password) {
-      alert("Please fill in all fields");
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
@@ -32,9 +32,19 @@ export default function Signup() {
         email.trim(),
         password
       );
-      router.replace("/");
+
+      Alert.alert(
+        "Verify Your Email",
+        "A verification link has been sent to your email. Please verify before logging in.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/login"),
+          },
+        ]
+      );
     } catch (err: any) {
-      alert(err.message);
+      Alert.alert("Signup Failed", err.message);
     }
   };
 
@@ -49,18 +59,19 @@ export default function Signup() {
           Sign up to start planning amazing trips
         </Text>
 
-        {/* Full Name Field */}
+        {/* Full Name */}
         <View style={styles.inputContainer}>
           <User size={20} color="#555" />
           <TextInput
             placeholder="Full Name"
             placeholderTextColor="#777"
+            value={fullName}
             onChangeText={setFullName}
             style={styles.input}
           />
         </View>
 
-        {/* Email Field */}
+        {/* Email */}
         <View style={styles.inputContainer}>
           <Mail size={20} color="#555" />
           <TextInput
@@ -68,18 +79,20 @@ export default function Signup() {
             placeholderTextColor="#777"
             autoCapitalize="none"
             keyboardType="email-address"
+            value={email}
             onChangeText={setEmail}
             style={styles.input}
           />
         </View>
 
-        {/* Password Field */}
+        {/* Password */}
         <View style={styles.inputContainer}>
           <Lock size={20} color="#555" />
           <TextInput
             placeholder="Password"
             placeholderTextColor="#777"
             secureTextEntry={!showPassword}
+            value={password}
             onChangeText={setPassword}
             style={[styles.input, { marginRight: 40 }]}
           />
@@ -95,7 +108,7 @@ export default function Signup() {
           </TouchableOpacity>
         </View>
 
-        {/* Create Account Button */}
+        {/* Sign Up Button */}
         <TouchableOpacity style={styles.button} onPress={handleSignup}>
           <Text style={styles.buttonText}>Sign Up</Text>
         </TouchableOpacity>
@@ -110,8 +123,13 @@ export default function Signup() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  inner: { padding: 25, marginTop: 80 },
+  container: {
+    flex: 1,
+  },
+  inner: {
+    padding: 25,
+    marginTop: 80,
+  },
   title: {
     fontSize: 32,
     fontWeight: "700",
