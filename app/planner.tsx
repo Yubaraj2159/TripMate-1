@@ -8,11 +8,14 @@ import {
   ScrollView,
   Alert,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { MapPin, UserPlus, PlaneTakeoff, Image as ImageIcon } from "lucide-react-native";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../config/firebaseConfig";
 
 const UNSPLASH_ACCESS_KEY = "your_unsplash_key_here";
 
@@ -27,6 +30,7 @@ type Trip = {
 
 export default function Planner(): JSX.Element {
   const router = useRouter();
+
   const [trip, setTrip] = useState<Trip>({
     name: "",
     destination: "",
@@ -36,7 +40,10 @@ export default function Planner(): JSX.Element {
     type: "",
   });
 
-  const [imageUrl, setImageUrl] = useState<string>("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
   const fetchTimeout = useRef<number | null>(null);
   const isMounted = useRef(true);
 
@@ -51,28 +58,47 @@ export default function Planner(): JSX.Element {
     setTrip((prev) => ({ ...prev, [field]: value }));
   };
 
+  const formatDate = (date: Date) =>
+    date.toISOString().split("T")[0];
+
+  /* ---------- Firestore Save ---------- */
   const handleSubmit = async () => {
     if (!trip.name || !trip.destination || !trip.startDate || !trip.endDate || !trip.type) {
       Alert.alert("Missing info", "Please fill all required fields.");
       return;
     }
 
-    try {
-      const existingRaw = await AsyncStorage.getItem("plannedTrips");
-      const existing: Trip[] = existingRaw ? JSON.parse(existingRaw) : [];
-      existing.push(trip);
-      await AsyncStorage.setItem("plannedTrips", JSON.stringify(existing));
+    const user = auth.currentUser;
+    if (!user) {
+      Alert.alert("Authentication Error", "Please log in again.");
+      return;
+    }
 
-      Alert.alert("Success", "🎉 Trip successfully created!", [
+    try {
+      await addDoc(collection(db, "users", user.uid, "trips"), {
+        ...trip,
+        createdAt: serverTimestamp(),
+      });
+
+      Alert.alert("Success", "Trip successfully created!", [
         { text: "View Trips", onPress: () => router.push("/trips") },
       ]);
-    } catch (err) {
-      console.error("Error:", err);
+
+      setTrip({
+        name: "",
+        destination: "",
+        startDate: "",
+        endDate: "",
+        friends: "",
+        type: "",
+      });
+    } catch (error) {
+      console.error(error);
       Alert.alert("Error", "Could not save trip.");
     }
   };
 
-  // Unsplash Image Fetch
+  /* ---------- Unsplash Image Fetch ---------- */
   useEffect(() => {
     if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
 
@@ -88,16 +114,12 @@ export default function Planner(): JSX.Element {
             trip.destination
           )}&client_id=${UNSPLASH_ACCESS_KEY}&orientation=landscape&per_page=1`
         );
-        const data = await res.json();
 
+        const data = await res.json();
         if (!isMounted.current) return;
 
-        if (data.results?.length > 0) {
-          setImageUrl(data.results[0].urls.regular);
-        } else {
-          setImageUrl("");
-        }
-      } catch (e) {
+        setImageUrl(data.results?.[0]?.urls?.regular || "");
+      } catch {
         if (isMounted.current) setImageUrl("");
       }
     }, 500);
@@ -122,19 +144,46 @@ export default function Planner(): JSX.Element {
         onChange={(v) => updateField("destination", v)}
       />
 
-      <Input
-        label="Start Date (YYYY-MM-DD)"
-        value={trip.startDate}
-        onChange={(v) => updateField("startDate", v)}
-        placeholder="2025-12-20"
-      />
+      {/* Start Date */}
+      <Text style={styles.label}>Start Date</Text>
+      <TouchableOpacity style={styles.inputRow} onPress={() => setShowStartPicker(true)}>
+        <Text style={styles.textInput}>
+          {trip.startDate || "Select start date"}
+        </Text>
+      </TouchableOpacity>
 
-      <Input
-        label="End Date (YYYY-MM-DD)"
-        value={trip.endDate}
-        onChange={(v) => updateField("endDate", v)}
-        placeholder="2025-12-25"
-      />
+      {showStartPicker && (
+        <DateTimePicker
+          value={trip.startDate ? new Date(trip.startDate) : new Date()}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(_, date) => {
+            setShowStartPicker(false);
+            if (date) updateField("startDate", formatDate(date));
+          }}
+        />
+      )}
+
+      {/* End Date */}
+      <Text style={styles.label}>End Date</Text>
+      <TouchableOpacity style={styles.inputRow} onPress={() => setShowEndPicker(true)}>
+        <Text style={styles.textInput}>
+          {trip.endDate || "Select end date"}
+        </Text>
+      </TouchableOpacity>
+
+      {showEndPicker && (
+        <DateTimePicker
+          value={trip.endDate ? new Date(trip.endDate) : new Date()}
+          minimumDate={trip.startDate ? new Date(trip.startDate) : undefined}
+          mode="date"
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={(_, date) => {
+            setShowEndPicker(false);
+            if (date) updateField("endDate", formatDate(date));
+          }}
+        />
+      )}
 
       <Input
         label="Invite Friends (Optional)"
@@ -144,10 +193,10 @@ export default function Planner(): JSX.Element {
       />
 
       <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Create Trip ✨</Text>
+        <Text style={styles.buttonText}>Create Trip</Text>
       </TouchableOpacity>
 
-      {/* Preview Box */}
+      {/* Preview */}
       <View style={styles.previewCard}>
         <Text style={styles.previewTitle}>Trip Preview</Text>
         <Preview label="Type" value={trip.type} />
@@ -170,66 +219,48 @@ export default function Planner(): JSX.Element {
   );
 }
 
-/* ---------- Trip Type Dropdown (Picker) ---------- */
+/* ---------- Components ---------- */
 
-function TripTypePicker({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
+function TripTypePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={styles.label}>Trip Type</Text>
-
       <View style={styles.pickerWrapper}>
-        <Picker selectedValue={value} onValueChange={onChange} style={styles.picker}>
+        <Picker selectedValue={value} onValueChange={onChange}>
           <Picker.Item label="Select a trip type..." value="" />
           <Picker.Item label="Road Trip" value="Road Trip" />
           <Picker.Item label="Beach Vacation" value="Beach Vacation" />
           <Picker.Item label="City Escape" value="City Escape" />
           <Picker.Item label="Hiking Adventure" value="Hiking Adventure" />
-          <Picker.Item
-            label="International – Southeast Asia"
-            value="International – Southeast Asia"
-          />
-          <Picker.Item
-            label="International – Europe"
-            value="International – Europe"
-          />
+          <Picker.Item label="International – Southeast Asia" value="International – Southeast Asia" />
+          <Picker.Item label="International – Europe" value="International – Europe" />
         </Picker>
       </View>
     </View>
   );
 }
 
-/* ---------- UI Components ---------- */
-
 function Input({
   label,
   value,
   onChange,
   icon,
-  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   icon?: React.ReactNode;
-  placeholder?: string;
 }) {
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={styles.label}>{label}</Text>
-
       <View style={styles.inputRow}>
         {icon && <View style={{ marginRight: 8 }}>{icon}</View>}
         <TextInput
           style={styles.textInput}
           value={value}
           onChangeText={onChange}
-          placeholder={placeholder || label}
+          placeholder={label}
           placeholderTextColor="#888"
         />
       </View>
@@ -237,7 +268,7 @@ function Input({
   );
 }
 
-function Preview({ label, value }) {
+function Preview({ label, value }: { label: string; value: string }) {
   return (
     <Text style={styles.previewText}>
       <Text style={{ fontWeight: "600" }}>{label}: </Text>
@@ -246,7 +277,7 @@ function Preview({ label, value }) {
   );
 }
 
-/* ---------- Styles ----------This is the styles */
+/* ---------- Styles ---------- */
 
 const styles = StyleSheet.create({
   container: {
@@ -254,8 +285,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#eef6ff",
     flexGrow: 1,
   },
-
-  /* Header */
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -264,25 +293,24 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 18,
   },
-  headerTitle: { color: "white", fontSize: 22, fontWeight: "700", marginLeft: 10 },
-
-  label: { fontSize: 14, fontWeight: "600", marginBottom: 6, color: "#1e293b" },
-
-  /* Picker Styling */
+  headerTitle: {
+    color: "white",
+    fontSize: 22,
+    fontWeight: "700",
+    marginLeft: 10,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 6,
+    color: "#1e293b",
+  },
   pickerWrapper: {
     borderWidth: 1,
     borderColor: "#3b82f6",
     borderRadius: 10,
-    overflow: "hidden",
     backgroundColor: "white",
   },
-  picker: {
-    height: 50,
-    width: "100%",
-    color: "#1e293b",
-  },
-
-  /* Inputs */
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -291,15 +319,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     backgroundColor: "white",
+    height: 48,
   },
   textInput: {
     flex: 1,
-    paddingVertical: 10,
     fontSize: 16,
     color: "#0f172a",
   },
-
-  /* Button */
   button: {
     backgroundColor: "#2563eb",
     padding: 14,
@@ -312,21 +338,22 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "600",
   },
-
-  /* Preview Card */
   previewCard: {
     marginTop: 24,
     backgroundColor: "white",
     padding: 16,
     borderRadius: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
     elevation: 4,
   },
-  previewTitle: { fontSize: 18, fontWeight: "700", marginBottom: 10, color: "#0f172a" },
-  previewText: { fontSize: 15, marginBottom: 6, color: "#334155" },
-
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  previewText: {
+    fontSize: 15,
+    marginBottom: 6,
+  },
   imageBox: {
     height: 160,
     marginTop: 10,
@@ -334,6 +361,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#f1f5f9",
   },
-  image: { width: "100%", height: "100%" },
-  imageFallback: { flex: 1, justifyContent: "center", alignItems: "center" },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  imageFallback: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
