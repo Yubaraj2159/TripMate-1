@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Home, Map, Calendar, User } from "lucide-react-native";
+import { Home, Map, Wallet, Calendar, User } from "lucide-react-native";
 
 export default function TabLayout() {
   return (
@@ -47,6 +47,17 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+  name="budget"
+  options={{
+    title: "Budget",
+    tabBarIcon: ({ color, size }) => (
+      <Wallet color={color} size={size} />
+    ),
+  }}
+/>
+
 
       <Tabs.Screen
         name="profile"
