@@ -1,4 +1,3 @@
-// app/login.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -11,76 +10,9 @@ import {
   Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { loginUser, resetPassword } from "../services/authService";
 import { router } from "expo-router";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  inner: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#e0e0e0",
-    textAlign: "center",
-    marginBottom: 30,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 16,
-    height: 50,
-  },
-  input: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 16,
-    color: "#333",
-  },
-  eyeIcon: {
-    padding: 8,
-  },
-  forgotText: {
-    color: "#fff",
-    textAlign: "right",
-    marginBottom: 20,
-    fontSize: 14,
-    textDecorationLine: "underline",
-  },
-  button: {
-    backgroundColor: "#fff",
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  buttonText: {
-    color: "#4E54C8",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  link: {
-    color: "#fff",
-    textAlign: "center",
-    fontSize: 14,
-    textDecorationLine: "underline",
-  },
-});
+import { loginUser, resetPassword } from "../services/authService";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -89,11 +21,16 @@ export default function Login() {
   const [sendingReset, setSendingReset] = useState(false);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Missing Fields", "Please enter email and password.");
+      return;
+    }
+
     try {
       await loginUser(email.trim(), password);
-      router.replace("/");
-    } catch (err: any) {
-      Alert.alert("Login Failed", err.message);
+      router.replace("/(tabs)/dashboard");
+    } catch (error: any) {
+      Alert.alert("Login Failed", error.message);
     }
   };
 
@@ -110,8 +47,8 @@ export default function Login() {
         "Reset Email Sent",
         "A password reset link has been sent to your email."
       );
-    } catch (err: any) {
-      Alert.alert("Error", err.message);
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
     } finally {
       setSendingReset(false);
     }
@@ -123,15 +60,19 @@ export default function Login() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.inner}
       >
-        <Text style={styles.title}>Welcome Back!</Text>
-        <Text style={styles.subtitle}>Login to continue planning your trips</Text>
+        {/* Title */}
+        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.subtitle}>
+          Login to continue planning your trips
+        </Text>
 
-        {/* Email Field */}
+        {/* Email */}
         <View style={styles.inputContainer}>
           <Mail size={20} color="#555" />
           <TextInput
             placeholder="Email"
             placeholderTextColor="#777"
+            value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
@@ -139,13 +80,14 @@ export default function Login() {
           />
         </View>
 
-        {/* Password Field */}
+        {/* Password */}
         <View style={styles.inputContainer}>
           <Lock size={20} color="#555" />
           <TextInput
             placeholder="Password"
             placeholderTextColor="#777"
             secureTextEntry={!showPassword}
+            value={password}
             onChangeText={setPassword}
             style={[styles.input, { marginRight: 40 }]}
           />
@@ -177,11 +119,90 @@ export default function Login() {
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
 
-        {/* Signup Link */}
+        {/* Signup */}
         <TouchableOpacity onPress={() => router.push("/signup")}>
-          <Text style={styles.link}>Don't have an account? Sign up</Text>
+          <Text style={styles.link}>
+            Don't have an account? Sign up
+          </Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+
+  inner: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 22,
+  },
+
+  title: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#fff",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+
+  subtitle: {
+    fontSize: 14,
+    color: "#E0E7FF",
+    textAlign: "center",
+    marginBottom: 28,
+  },
+
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    height: 52,
+  },
+
+  input: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 16,
+    color: "#111827",
+  },
+
+  eyeIcon: {
+    padding: 8,
+  },
+
+  forgotText: {
+    color: "#fff",
+    textAlign: "right",
+    marginBottom: 22,
+    fontSize: 14,
+    textDecorationLine: "underline",
+  },
+
+  button: {
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+
+  buttonText: {
+    color: "#4E54C8",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  link: {
+    color: "#fff",
+    textAlign: "center",
+    fontSize: 14,
+    textDecorationLine: "underline",
+  },
+});
