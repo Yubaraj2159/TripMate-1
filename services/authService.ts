@@ -4,23 +4,30 @@ import {
   signOut,
   sendEmailVerification,
   sendPasswordResetEmail,
+  updateProfile,
+  User,
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { auth, db } from "../config/firebaseConfig";
 
 /**
  * Register a new user
  * - Creates Firebase Auth user
- * - Stores full name in Firestore
+ * - Saves profile in Firestore (/users/{uid})
+ * - Sets displayName in Auth
  * - Sends verification email
  */
 export const registerUser = async (
   fullName: string,
   email: string,
   password: string
-) => {
+): Promise<User> => {
   try {
-    // 1. Create user in Firebase Authentication
+    // Create user in Firebase Authentication
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       email,
@@ -29,20 +36,26 @@ export const registerUser = async (
 
     const user = userCredential.user;
 
-    // 2. Save user profile in Firestore
+    // Set display name in Auth profile
+    await updateProfile(user, {
+      displayName: fullName,
+    });
+
+    // Save user data in Firestore
     await setDoc(doc(db, "users", user.uid), {
       uid: user.uid,
       fullName: fullName,
       email: email,
-      createdAt: new Date(),
+      createdAt: serverTimestamp(),
     });
 
-    // 3. Send email verification
+    // Send email verification
     await sendEmailVerification(user);
 
     return user;
   } catch (error: any) {
-    throw new Error(error.message);
+    console.log("Register Error:", error);
+    throw new Error(error.message || "Signup failed");
   }
 };
 
@@ -50,7 +63,10 @@ export const registerUser = async (
  * Login user
  * - Blocks login if email is not verified
  */
-export const loginUser = async (email: string, password: string) => {
+export const loginUser = async (
+  email: string,
+  password: string
+): Promise<User> => {
   try {
     const userCredential = await signInWithEmailAndPassword(
       auth,
@@ -68,15 +84,15 @@ export const loginUser = async (email: string, password: string) => {
 
     return user;
   } catch (error: any) {
-    throw new Error(error.message);
+    console.log("Login Error:", error);
+    throw new Error(error.message || "Login failed");
   }
 };
 
 /**
- * Forgot Password
- * - Sends password reset email
+ * Send password reset email
  */
-export const resetPassword = async (email: string) => {
+export const resetPassword = async (email: string): Promise<void> => {
   try {
     if (!email) {
       throw new Error("Email is required");
@@ -84,13 +100,19 @@ export const resetPassword = async (email: string) => {
 
     await sendPasswordResetEmail(auth, email);
   } catch (error: any) {
-    throw new Error(error.message);
+    console.log("Reset Password Error:", error);
+    throw new Error(error.message || "Password reset failed");
   }
 };
 
 /**
- * Logout user
+ * Logout current user
  */
-export const logoutUser = async () => {
-  await signOut(auth);
+export const logoutUser = async (): Promise<void> => {
+  try {
+    await signOut(auth);
+  } catch (error: any) {
+    console.log("Logout Error:", error);
+    throw new Error("Logout failed");
+  }
 };
