@@ -19,6 +19,7 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
     if (!fullName || !email || !password) {
@@ -26,25 +27,39 @@ export default function Signup() {
       return;
     }
 
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters");
+      return;
+    }
+
     try {
+      setLoading(true);
+
       await registerUser(
         fullName.trim(),
         email.trim(),
         password
       );
 
+      // Show alert
       Alert.alert(
         "Verify Your Email",
-        "A verification link has been sent to your email. Please verify before logging in.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace("/login"),
-          },
-        ]
+        "A verification link has been sent to your email. Please verify before logging in."
       );
+
+      // Force redirect (alert-safe)
+      setTimeout(() => {
+        router.replace("/login");
+      }, 600);
+
     } catch (err: any) {
-      Alert.alert("Signup Failed", err.message);
+      console.log("Signup error:", err);
+      Alert.alert(
+        "Signup Failed",
+        err.message || "Something went wrong"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -109,13 +124,24 @@ export default function Signup() {
         </View>
 
         {/* Sign Up Button */}
-        <TouchableOpacity style={styles.button} onPress={handleSignup}>
-          <Text style={styles.buttonText}>Sign Up</Text>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            loading && { opacity: 0.7 }
+          ]}
+          onPress={handleSignup}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Creating Account..." : "Sign Up"}
+          </Text>
         </TouchableOpacity>
 
         {/* Login Redirect */}
         <TouchableOpacity onPress={() => router.push("/login")}>
-          <Text style={styles.link}>Already have an account? Login</Text>
+          <Text style={styles.link}>
+            Already have an account? Login
+          </Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </LinearGradient>
