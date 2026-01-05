@@ -51,7 +51,7 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="budget"
         options={{
           title: "Budget",
@@ -59,7 +59,7 @@ export default function TabLayout() {
             <Wallet color={color} size={size} />
           ),
         }}
-      />
+      /> */}
 
       <Tabs.Screen
         name="profile"
