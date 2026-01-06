@@ -1,4 +1,3 @@
-// app/profile.tsx
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -23,58 +22,56 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../../config/firebaseConfig";
 import { signOut, updateProfile } from "firebase/auth";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
+import { collection, getDocs } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+type StatCardProps = {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+};
+
+type InfoRowProps = {
+  icon: React.ReactNode;
+  text: string;
+};
 
 export default function Profile() {
   const router = useRouter();
   const user = auth.currentUser;
 
-  const [tripCount, setTripCount] = useState(0);
-  const [totalExpense, setTotalExpense] = useState(0);
-  const [photoURL, setPhotoURL] = useState(user?.photoURL);
+  const [tripCount, setTripCount] = useState<number>(0);
+  const [totalExpense, setTotalExpense] = useState<number>(0);
+  const [photoURL, setPhotoURL] = useState<string | null>(user?.photoURL ?? null);
 
   /* ---------------- Fetch Stats ---------------- */
   useEffect(() => {
     if (!user) return;
 
     const fetchStats = async () => {
-      // Trips
-      const tripQuery = query(
-        collection(db, "trips"),
-        where("userId", "==", user.uid)
-      );
-      const tripSnap = await getDocs(tripQuery);
+      // ✅ Correct trips path
+      const tripsRef = collection(db, "users", user.uid, "trips");
+      const tripSnap = await getDocs(tripsRef);
       setTripCount(tripSnap.size);
 
-      // Expenses
-      const expenseQuery = query(
-        collection(db, "expenses"),
-        where("userId", "==", user.uid)
-      );
-      const expenseSnap = await getDocs(expenseQuery);
+      // ✅ Correct expenses path
+      const expensesRef = collection(db, "users", user.uid, "expenses");
+      const expenseSnap = await getDocs(expensesRef);
 
       let total = 0;
       expenseSnap.forEach((doc) => {
-        total += doc.data().amount || 0;
+        total += Number(doc.data().amount || 0);
       });
       setTotalExpense(total);
     };
 
     fetchStats();
-  }, []);
+  }, [user]);
 
   /* ---------------- Upload Profile Photo ---------------- */
   const pickImage = async () => {
+    if (!user) return;
+
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission required");
@@ -93,11 +90,12 @@ export default function Profile() {
     const response = await fetch(uri);
     const blob = await response.blob();
 
-    const imageRef = ref(storage, `profilePhotos/${user?.uid}.jpg`);
+    const imageRef = ref(storage, `profilePhotos/${user.uid}.jpg`);
     await uploadBytes(imageRef, blob);
-    const downloadURL = await getDownloadURL(imageRef);
 
-    await updateProfile(user!, { photoURL: downloadURL });
+    const downloadURL = await getDownloadURL(imageRef);
+    await updateProfile(user, { photoURL: downloadURL });
+
     setPhotoURL(downloadURL);
   };
 
@@ -109,7 +107,6 @@ export default function Profile() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
       <LinearGradient colors={["#2563eb", "#38bdf8"]} style={styles.header}>
         <TouchableOpacity onPress={pickImage} style={styles.avatarWrapper}>
           <Image
@@ -132,7 +129,6 @@ export default function Profile() {
         </View>
       </LinearGradient>
 
-      {/* Stats */}
       <View style={styles.statsContainer}>
         <StatCard
           icon={<Plane size={20} color="#2563eb" />}
@@ -146,15 +142,12 @@ export default function Profile() {
         />
       </View>
 
-      {/* Account Info */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Information</Text>
-
-        <InfoRow icon={<User size={18} />} text={`User ID: ${user?.uid}`} />
-        <InfoRow icon={<Mail size={18} />} text={user?.email || "N/A"} />
+        <InfoRow icon={<User size={18} />} text={`User ID: ${user?.uid ?? ""}`} />
+        <InfoRow icon={<Mail size={18} />} text={user?.email ?? "N/A"} />
       </View>
 
-      {/* Logout */}
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <LogOut size={18} color="#fff" />
         <Text style={styles.logoutText}>Logout</Text>
@@ -165,7 +158,7 @@ export default function Profile() {
 
 /* ---------------- Components ---------------- */
 
-function StatCard({ icon, label, value }: any) {
+function StatCard({ icon, label, value }: StatCardProps) {
   return (
     <View style={styles.statCard}>
       {icon}
@@ -175,7 +168,7 @@ function StatCard({ icon, label, value }: any) {
   );
 }
 
-function InfoRow({ icon, text }: any) {
+function InfoRow({ icon, text }: InfoRowProps) {
   return (
     <View style={styles.row}>
       {icon}
@@ -184,77 +177,125 @@ function InfoRow({ icon, text }: any) {
   );
 }
 
-/* ---------------- Styles ---------------- */
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
+  container: {
+    flex: 1,
+    backgroundColor: "#f8fafc",
+  },
   header: {
-    paddingTop: 60,
+    paddingTop: 40,
     paddingBottom: 30,
     alignItems: "center",
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
   },
-  avatarWrapper: { position: "relative" },
+  avatarWrapper: {
+    position: "relative",
+    marginBottom: 16,
+  },
   avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
     borderColor: "#fff",
   },
   editIcon: {
     position: "absolute",
-    bottom: 4,
-    right: 4,
+    bottom: 0,
+    right: 0,
     backgroundColor: "#2563eb",
-    padding: 6,
     borderRadius: 20,
+    padding: 8,
   },
-  name: { fontSize: 22, fontWeight: "700", color: "#fff", marginTop: 12 },
-  email: { fontSize: 14, color: "#e0f2fe", marginTop: 4 },
+  name: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 14,
+    color: "#e0f2fe",
+    marginBottom: 12,
+  },
   verifyBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#ecfeff",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    marginTop: 10,
   },
-  verifyText: { marginLeft: 6, fontSize: 12, fontWeight: "600" },
+  verifyText: {
+    marginLeft: 6,
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
   statsContainer: {
     flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     justifyContent: "space-around",
-    marginTop: -30,
   },
   statCard: {
-    backgroundColor: "#fff",
-    width: "40%",
-    borderRadius: 16,
     alignItems: "center",
-    padding: 16,
-    elevation: 4,
+    backgroundColor: "#fff",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  statValue: { fontSize: 18, fontWeight: "700", marginTop: 6 },
-  statLabel: { fontSize: 12, color: "#64748b" },
+  statValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginTop: 8,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 4,
+  },
   section: {
-    backgroundColor: "#fff",
-    margin: 16,
-    borderRadius: 16,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 12 },
-  row: { flexDirection: "row", alignItems: "center", marginVertical: 6 },
-  rowText: { marginLeft: 10, fontSize: 14 },
-  logoutBtn: {
-    backgroundColor: "#ef4444",
-    margin: 20,
-    paddingVertical: 14,
-    borderRadius: 30,
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 12,
+  },
+  row: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
   },
-  logoutText: { color: "#fff", marginLeft: 8, fontWeight: "600" },
+  rowText: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: "#475569",
+  },
+  logoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ef4444",
+    marginHorizontal: 16,
+    marginVertical: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  logoutText: {
+    marginLeft: 8,
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
 });
