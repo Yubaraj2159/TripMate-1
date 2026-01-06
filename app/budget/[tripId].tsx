@@ -282,6 +282,7 @@ export default function BudgetPage() {
             accessor="amount"
             backgroundColor="transparent"
             chartConfig={{ color: () => "#000" }}
+            paddingLeft="0"
           />
 
           <BarChart
@@ -293,10 +294,12 @@ export default function BudgetPage() {
             height={220}
             chartConfig={{
               backgroundGradientFrom: "#fff",
-              backgroundGradientTo: "#fff",
+              backgroundGradientTo: "#fff ",
               color: () => "#2563eb",
             }}
             style={{ marginTop: 20 }}
+            yAxisLabel=""
+            yAxisSuffix=""
           />
         </>
       )}
