@@ -40,17 +40,17 @@ export default function Trips() {
     const ref = collection(db, "users", user.uid, "trips");
     const q = query(ref, orderBy("createdAt", "desc"));
 
-    const unsub = onSnapshot(q, (snap) => {
-      setTrips(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Trip, "id">),
-        }))
-      );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: Trip[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Trip, "id">),
+      }));
+
+      setTrips(data);
       setLoading(false);
     });
 
-    return () => unsub();
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
@@ -64,11 +64,13 @@ export default function Trips() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.headerRow}>
         <Plane color="white" size={26} />
         <Text style={styles.headerTitle}>My Trips</Text>
       </View>
 
+      {/* Empty State */}
       {trips.length === 0 ? (
         <View style={styles.center}>
           <Text>No trips planned yet</Text>
@@ -83,9 +85,11 @@ export default function Trips() {
         <FlatList
           data={trips}
           keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <TripCard
               trip={item}
+              onPress={() => router.push(`/trip/${item.id}`)}
               onBudget={() => router.push(`/budget/${item.id}`)}
             />
           )}
@@ -97,46 +101,59 @@ export default function Trips() {
 
 function TripCard({
   trip,
+  onPress,
   onBudget,
 }: {
   trip: Trip;
+  onPress: () => void;
   onBudget: () => void;
 }) {
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.tripName}>{trip.name}</Text>
-        <TouchableOpacity onPress={onBudget}>
-          <Wallet size={22} color="#2563eb" />
-        </TouchableOpacity>
-      </View>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.tripName}>{trip.name}</Text>
 
-      <View style={styles.row}>
-        <MapPin size={16} color="#2563eb" />
-        <Text style={styles.text}>{trip.destination}</Text>
-      </View>
+          {/* Budget Icon */}
+          <TouchableOpacity
+            onPress={onBudget}
+            onPressIn={(e) => e.stopPropagation()}
+          >
+            <Wallet size={22} color="#2563eb" />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.row}>
-        <CalendarDays size={16} color="#2563eb" />
-        <Text style={styles.text}>
-          {trip.startDate} → {trip.endDate}
-        </Text>
-      </View>
+        <View style={styles.row}>
+          <MapPin size={16} color="#2563eb" />
+          <Text style={styles.text}>{trip.destination}</Text>
+        </View>
 
-      <View style={styles.row}>
-        <Users size={16} color="#2563eb" />
-        <Text style={styles.text}>{trip.friends || "No friends added"}</Text>
-      </View>
+        <View style={styles.row}>
+          <CalendarDays size={16} color="#2563eb" />
+          <Text style={styles.text}>
+            {trip.startDate} → {trip.endDate}
+          </Text>
+        </View>
 
-      <View style={styles.typeBadge}>
-        <Text style={styles.typeText}>{trip.type}</Text>
+        <View style={styles.row}>
+          <Users size={16} color="#2563eb" />
+          <Text style={styles.text}>{trip.friends || "No friends added"}</Text>
+        </View>
+
+        <View style={styles.typeBadge}>
+          <Text style={styles.typeText}>{trip.type}</Text>
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#eef6ff" },
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: "#eef6ff",
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -145,15 +162,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
   },
-  headerTitle: { color: "white", fontSize: 22, fontWeight: "700", marginLeft: 10 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  headerTitle: {
+    color: "white",
+    fontSize: 22,
+    fontWeight: "700",
+    marginLeft: 10,
+  },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   createButton: {
     marginTop: 10,
     backgroundColor: "#2563eb",
     padding: 12,
     borderRadius: 10,
   },
-  createButtonText: { color: "white", fontWeight: "600" },
+  createButtonText: {
+    color: "white",
+    fontWeight: "600",
+  },
   card: {
     backgroundColor: "white",
     padding: 16,
@@ -166,9 +195,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  tripName: { fontSize: 18, fontWeight: "700", color: "#0f172a" },
-  row: { flexDirection: "row", alignItems: "center", marginTop: 6 },
-  text: { marginLeft: 8, color: "#334155" },
+  tripName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+  },
+  text: {
+    marginLeft: 8,
+    color: "#334155",
+  },
   typeBadge: {
     marginTop: 10,
     backgroundColor: "#dbeafe",
@@ -177,5 +217,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignSelf: "flex-start",
   },
-  typeText: { color: "#1d4ed8", fontWeight: "600", fontSize: 13 },
+  typeText: {
+    color: "#1d4ed8",
+    fontWeight: "600",
+    fontSize: 13,
+  },
 });
