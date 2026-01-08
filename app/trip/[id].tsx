@@ -4,57 +4,97 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  ScrollView,
   TouchableOpacity,
+  Alert,
+  ScrollView,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../config/firebaseConfig";
-import { ArrowLeft, CalendarDays, MapPin, Users } from "lucide-react-native";
+import { doc, onSnapshot, deleteDoc } from "firebase/firestore";
+import { auth, db } from "../../config/firebaseConfig";
+import {
+  MapPin,
+  CalendarDays,
+  Users,
+  Plane,
+  Wallet,
+  Pencil,
+  Trash2,
+} from "lucide-react-native";
 
-interface Trip {
+type Trip = {
   name: string;
   destination: string;
-  startDate: string;
-  endDate: string;
-  members: number;
-  budget?: number;
-}
+  startDate: any;
+  endDate: any;
+  friends?: string;
+  type: string;
+};
 
-export default function TripDetailsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+export default function TripDetails() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const user = auth.currentUser;
+
   useEffect(() => {
-    if (!id) return;
+    if (!user || !id) return;
 
-    const fetchTrip = async () => {
-      try {
-        const docRef = doc(db, "trips", id);
-        const snapshot = await getDoc(docRef);
+    const ref = doc(db, "users", user.uid, "trips", id);
 
-        if (snapshot.exists()) {
-          setTrip(snapshot.data() as Trip);
-        } else {
+    const unsubscribe = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) {
           setTrip(null);
+        } else {
+          setTrip(snap.data() as Trip);
         }
-      } catch (error) {
-        console.error("Error fetching trip:", error);
-      } finally {
         setLoading(false);
-      }
-    };
+      },
+      () => setLoading(false)
+    );
 
-    fetchTrip();
-  }, [id]);
+    return () => unsubscribe();
+  }, [id, user?.uid]);
+
+  const parseDate = (d: any) => (d?.toDate ? d.toDate() : new Date(d));
+
+  const getStatus = () => {
+    if (!trip) return "";
+    const now = new Date();
+    const start = parseDate(trip.startDate);
+    const end = parseDate(trip.endDate);
+
+    if (now < start) return "Upcoming";
+    if (now > end) return "Completed";
+    return "Ongoing";
+  };
+
+  const deleteTrip = async () => {
+    if (!user || !id) return;
+
+    Alert.alert("Delete Trip", "This action cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          await deleteDoc(doc(db, "users", user.uid, "trips", id));
+          router.replace("/trips");
+        },
+      },
+    ]);
+  };
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text>Loading trip...</Text>
       </View>
     );
   }
@@ -62,125 +102,157 @@ export default function TripDetailsScreen() {
   if (!trip) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>Trip not found</Text>
+        <Text style={{ fontSize: 18, fontWeight: "600" }}>
+          Trip not found
+        </Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={{ color: "#2563eb", marginTop: 10 }}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#fff" />
-        </TouchableOpacity>
+        <Plane color="white" size={26} />
         <Text style={styles.headerTitle}>{trip.name}</Text>
       </View>
 
-      {/* Trip Info */}
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <MapPin size={18} />
-          <Text style={styles.text}>{trip.destination}</Text>
-        </View>
-
-        <View style={styles.row}>
-          <CalendarDays size={18} />
-          <Text style={styles.text}>
-            {trip.startDate} → {trip.endDate}
-          </Text>
-        </View>
-
-        <View style={styles.row}>
-          <Users size={18} />
-          <Text style={styles.text}>{trip.members} members</Text>
-        </View>
-
-        {trip.budget !== undefined && (
-          <Text style={styles.budget}>Budget: NPR {trip.budget}</Text>
-        )}
+      <View style={styles.badge}>
+        <Text style={styles.badgeText}>{getStatus()}</Text>
       </View>
 
-      {/* Actions */}
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push(`/budget/${id}`)}
-        >
-          <Text style={styles.actionText}>Manage Budget</Text>
-        </TouchableOpacity>
+      <InfoRow icon={<MapPin size={18} color="#2563eb" />} text={trip.destination} />
+      <InfoRow
+        icon={<CalendarDays size={18} color="#2563eb" />}
+        text={`${parseDate(trip.startDate).toDateString()} → ${parseDate(
+          trip.endDate
+        ).toDateString()}`}
+      />
+      <InfoRow
+        icon={<Users size={18} color="#2563eb" />}
+        text={trip.friends || "No friends added"}
+      />
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push(`/planner/${id}`)}
-        >
-          <Text style={styles.actionText}>Open Planner</Text>
-        </TouchableOpacity>
+      <View style={styles.typeBadge}>
+        <Text style={styles.typeText}>{trip.type}</Text>
       </View>
+
+      <TouchableOpacity
+        style={styles.action}
+        onPress={() => router.push(`/budget/${id}`)}
+      >
+        <Wallet size={18} color="white" />
+        <Text style={styles.actionText}>View Budget</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.action}
+        onPress={() => router.push(`/planner?id=${id}`)}
+      >
+        <Pencil size={18} color="white" />
+        <Text style={styles.actionText}>Edit Trip</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.action, { backgroundColor: "#dc2626" }]}
+        onPress={deleteTrip}
+      >
+        <Trash2 size={18} color="white" />
+        <Text style={styles.actionText}>Delete Trip</Text>
+      </TouchableOpacity>
     </ScrollView>
+  );
+}
+
+function InfoRow({
+  icon,
+  text,
+}: {
+  icon: React.ReactNode;
+  text: string;
+}) {
+  return (
+    <View style={styles.row}>
+      {icon}
+      <Text style={styles.text}>{text}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f172a",
+    padding: 16,
+    backgroundColor: "#eef6ff",
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  errorText: {
-    color: "white",
-    fontSize: 16,
-  },
   header: {
-    padding: 16,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    backgroundColor: "#2563eb",
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 14,
   },
   headerTitle: {
     color: "white",
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "700",
+    marginLeft: 10,
   },
-  card: {
-    backgroundColor: "#1e293b",
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
+  badge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#dbeafe",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 14,
+  },
+  badgeText: {
+    color: "#1d4ed8",
+    fontWeight: "600",
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    backgroundColor: "white",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
   },
   text: {
-    color: "white",
-    fontSize: 15,
+    marginLeft: 10,
+    color: "#334155",
   },
-  budget: {
-    marginTop: 8,
-    color: "#38bdf8",
-    fontSize: 16,
+  typeBadge: {
+    backgroundColor: "#bfdbfe",
+    padding: 8,
+    borderRadius: 999,
+    alignSelf: "flex-start",
+    marginBottom: 20,
+  },
+  typeText: {
+    color: "#1e40af",
     fontWeight: "600",
   },
-  actions: {
-    padding: 16,
-    gap: 12,
-  },
-  actionButton: {
-    backgroundColor: "#2563eb",
-    paddingVertical: 14,
-    borderRadius: 10,
+  action: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#2563eb",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
   },
   actionText: {
     color: "white",
-    fontSize: 16,
     fontWeight: "600",
   },
 });
